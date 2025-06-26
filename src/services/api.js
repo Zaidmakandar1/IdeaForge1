@@ -29,6 +29,7 @@ export const getUserStats = () => api.get('/api/users/stats');
 export const followUser = (id) => api.post(`/api/users/${id}/follow`);
 export const unfollowUser = (id) => api.post(`/api/users/${id}/unfollow`);
 export const getAllUsers = () => api.get('/api/users');
+export const uploadAvatar = (formData) => api.post('/api/users/avatar', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 
 // --- IDEAS ---
 export const getIdeas = () => api.get('/api/ideas');

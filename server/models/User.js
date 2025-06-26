@@ -49,7 +49,8 @@ const userSchema = new mongoose.Schema({
   lastLogin: {
     type: Date,
     default: Date.now
-  }
+  },
+  skills: [{ type: String }]
 });
 
 const User = mongoose.model('User', userSchema);

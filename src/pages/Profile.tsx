@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import IdeaCard from '@/components/ideas/IdeaCard';
 import { Edit, MapPin, Calendar, Globe, Github, Twitter, Linkedin, Users, Lightbulb, MessageSquare, Star } from 'lucide-react';
-import { getProfile, updateProfile, getUserStats, getIdeas, getTeams, getMyCommunities, getIdeaComments } from '@/services/api';
+import { getProfile, updateProfile, getUserStats, getIdeas, getTeams, getMyCommunities, getIdeaComments, uploadAvatar } from '@/services/api';
 
 const Profile = () => {
   const { user, logout } = useAuth();
@@ -29,6 +29,11 @@ const Profile = () => {
   const [website, setWebsite] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [skills, setSkills] = useState<string[]>([]);
+  const [github, setGithub] = useState('');
+  const [twitter, setTwitter] = useState('');
+  const [linkedin, setLinkedin] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -48,6 +53,10 @@ const Profile = () => {
         setBio(profileRes.data.bio || '');
         setLocation(profileRes.data.location || '');
         setWebsite(profileRes.data.website || '');
+        setSkills(profileRes.data.skills || []);
+        setGithub(profileRes.data.social?.github || '');
+        setTwitter(profileRes.data.social?.twitter || '');
+        setLinkedin(profileRes.data.social?.linkedin || '');
         setStats(statsRes.data);
         setMyIdeas((ideasRes.data || []).filter(i => {
           if (typeof i.owner === 'object' && i.owner !== null) {
@@ -57,7 +66,6 @@ const Profile = () => {
         }));
         setTeams(teamsRes.data.myTeams || []);
         setCommunities(commRes.data.myCommunities || []);
-        // Optionally, fetch comments for user's ideas
       })
       .catch(() => setError('Failed to load profile'))
       .finally(() => setLoading(false));
@@ -66,10 +74,37 @@ const Profile = () => {
   const handleSaveProfile = async () => {
     setIsEditing(false);
     try {
-      await updateProfile({ bio, location, website });
-      setProfile({ ...profile, bio, location, website });
+      await updateProfile({
+        bio,
+        location,
+        website,
+        skills,
+        social: { github, twitter, linkedin },
+      });
+      setProfile({
+        ...profile,
+        bio,
+        location,
+        website,
+        skills,
+        social: { github, twitter, linkedin },
+      });
     } catch {
       setError('Failed to update profile');
+    }
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setAvatarFile(e.target.files[0]);
+      const formData = new FormData();
+      formData.append('avatar', e.target.files[0]);
+      try {
+        const res = await uploadAvatar(formData);
+        setProfile((prev) => prev ? { ...prev, avatar: res.data.avatar } : prev);
+      } catch (err) {
+        setError('Failed to upload avatar');
+      }
     }
   };
 
@@ -86,61 +121,91 @@ const Profile = () => {
           <div className="lg:col-span-1 space-y-6">
             <Card className="glass-card">
               <CardContent className="p-6 text-center">
-                <Avatar className="h-24 w-24 mx-auto mb-4">
-                  <AvatarImage src={profile.avatar} alt={profile.name} />
-                  <AvatarFallback className="text-2xl">{profile.name.charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
+                <div className="flex flex-col items-center mb-4">
+                  <label htmlFor="avatar-upload" className="cursor-pointer">
+                    <Avatar className="h-24 w-24 mx-auto mb-2">
+                      <AvatarImage src={profile.avatar ? `http://localhost:5050${profile.avatar}` : undefined} alt={profile.name} />
+                      <AvatarFallback className="text-2xl">{profile.name.charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <input
+                      id="avatar-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleAvatarChange}
+                    />
+                    <span className="text-xs text-gray-400">Change Avatar</span>
+                  </label>
+                </div>
                 <h2 className="text-xl font-space font-bold mb-1">{profile.name}</h2>
                 <p className="text-gray-400 text-sm mb-4">{profile.role || 'User'}</p>
                 <div className="flex items-center justify-center text-gray-400 text-sm mb-2">
                   <MapPin className="h-4 w-4 mr-1" />
-                  {location}
+                  {profile.location}
                 </div>
                 <div className="flex items-center justify-center text-gray-400 text-sm mb-4">
                   <Calendar className="h-4 w-4 mr-1" />
                   Joined {new Date(profile.createdAt).toLocaleDateString()}
                 </div>
                 {!isEditing ? (
-                  <p className="text-gray-300 text-sm leading-relaxed mb-4">{bio}</p>
+                  <>
+                    <p className="text-gray-300 text-sm leading-relaxed mb-4">{bio}</p>
+                    {skills.length > 0 && (
+                      <div className="mb-4">
+                        <div className="flex flex-wrap gap-2 justify-center">
+                          {skills.map((skill, idx) => (
+                            <Badge key={idx} variant="secondary">{skill}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex justify-center space-x-3 mb-4">
+                      {github && <a href={github} target="_blank" rel="noopener noreferrer"><Button variant="ghost" size="sm" className="p-2"><Github className="h-4 w-4" /></Button></a>}
+                      {twitter && <a href={twitter} target="_blank" rel="noopener noreferrer"><Button variant="ghost" size="sm" className="p-2"><Twitter className="h-4 w-4" /></Button></a>}
+                      {linkedin && <a href={linkedin} target="_blank" rel="noopener noreferrer"><Button variant="ghost" size="sm" className="p-2"><Linkedin className="h-4 w-4" /></Button></a>}
+                    </div>
+                  </>
                 ) : (
-                  <Textarea
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    className="glass border-white/20 focus:border-white/40 resize-none mb-4"
-                    rows={4}
-                  />
-                )}
-                <div className="flex justify-center space-x-3 mb-4">
-                  <Button variant="ghost" size="sm" className="p-2"><Globe className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="sm" className="p-2"><Github className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="sm" className="p-2"><Twitter className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="sm" className="p-2"><Linkedin className="h-4 w-4" /></Button>
-                </div>
-                {!isEditing ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsEditing(true)}
-                    className="w-full glass border-white/20 hover:bg-white/10"
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit Profile
-                  </Button>
-                ) : (
-                  <div className="space-y-2">
-                    <Button
-                      onClick={handleSaveProfile}
-                      className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
-                    >
-                      Save Changes
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsEditing(false)}
-                      className="w-full glass border-white/20 hover:bg-white/10"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
+                  <>
+                    <Textarea
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      className="glass border-white/20 focus:border-white/40 resize-none mb-4"
+                      rows={4}
+                    />
+                    <Label htmlFor="skills" className="block text-left mb-1">Skills (comma separated)</Label>
+                    <Input
+                      id="skills"
+                      value={skills.join(', ')}
+                      onChange={e => setSkills(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                      className="mb-4"
+                      placeholder="e.g. React, Node.js, UI/UX"
+                    />
+                    <Label htmlFor="github" className="block text-left mb-1">GitHub</Label>
+                    <Input
+                      id="github"
+                      value={github}
+                      onChange={e => setGithub(e.target.value)}
+                      className="mb-2"
+                      placeholder="GitHub profile URL"
+                    />
+                    <Label htmlFor="twitter" className="block text-left mb-1">Twitter</Label>
+                    <Input
+                      id="twitter"
+                      value={twitter}
+                      onChange={e => setTwitter(e.target.value)}
+                      className="mb-2"
+                      placeholder="Twitter profile URL"
+                    />
+                    <Label htmlFor="linkedin" className="block text-left mb-1">LinkedIn</Label>
+                    <Input
+                      id="linkedin"
+                      value={linkedin}
+                      onChange={e => setLinkedin(e.target.value)}
+                      className="mb-4"
+                      placeholder="LinkedIn profile URL"
+                    />
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -222,7 +287,7 @@ const Profile = () => {
                           <div className="flex -space-x-2">
                             {team.members.map((member) => (
                               <Avatar key={member.user._id} className="h-8 w-8 border-2 border-background">
-                                <AvatarImage src={member.user.avatar} alt={member.user.name} />
+                                <AvatarImage src={member.user.avatar ? `http://localhost:5050${member.user.avatar}` : undefined} alt={member.user.name} />
                                 <AvatarFallback>{member.user.name.charAt(0)}</AvatarFallback>
                               </Avatar>
                             ))}

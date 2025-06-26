@@ -5,8 +5,15 @@ import Idea from '../models/Idea.js';
 import Team from '../models/Team.js';
 import Community from '../models/Community.js';
 import auth from '../middleware/auth.js';
+import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
 const router = express.Router();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 router.use(auth);
 
@@ -43,7 +50,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
 // Update user profile
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
-    const { name, avatar, bio, location, website, social } = req.body;
+    const { name, avatar, bio, location, website, social, skills } = req.body;
     const user = await User.findById(req.userId);
     
     if (!user) {
@@ -56,6 +63,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
     if (location) user.location = location;
     if (website) user.website = website;
     if (social) user.social = { ...user.social, ...social };
+    if (skills) user.skills = skills;
 
     await user.save();
     res.json(user);
@@ -138,6 +146,33 @@ router.get('/', authenticateToken, async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
+});
+
+// Multer setup for avatar uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, '../uploads'));
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname);
+    cb(null, `avatar-${req.userId}-${Date.now()}${ext}`);
+  }
+});
+const upload = multer({ storage });
+
+// Avatar upload endpoint
+router.post('/avatar', authenticateToken, upload.single('avatar'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'No file uploaded' });
+  }
+  const avatarUrl = `/uploads/${req.file.filename}`;
+  // Update user's avatar field
+  const user = await User.findById(req.userId);
+  if (user) {
+    user.avatar = avatarUrl;
+    await user.save();
+  }
+  res.json({ avatar: avatarUrl });
 });
 
 export default router; 
