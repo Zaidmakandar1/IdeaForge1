@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Bell, Search, Menu, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const Navigation = () => {
   const { user, logout } = useAuth();
@@ -70,16 +71,23 @@ const Navigation = () => {
                 <Bell className="h-5 w-5" />
               </Button>
 
-              <Link to="/profile">
-                <Avatar className="h-8 w-8 cursor-pointer hover:ring-2 hover:ring-white/20 transition-all">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
-              </Link>
-
-              <Button variant="ghost" onClick={logout} size="sm">
-                Logout
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Avatar className="h-8 w-8 cursor-pointer hover:ring-2 hover:ring-white/20 transition-all">
+                    <AvatarImage src={user.avatar} alt={user.name} />
+                    <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-48 p-2 rounded-xl shadow-2xl bg-white text-gray-900">
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile" className="w-full">Profile</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/progress" className="w-full">Progress</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={logout} className="text-red-600">Logout</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           ) : (
             <div className="hidden md:flex items-center space-x-4">

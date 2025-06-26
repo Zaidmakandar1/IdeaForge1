@@ -78,13 +78,14 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
-    const { title, description, status, category, tags } = req.body;
+    const { title, description, status, category, tags, progress } = req.body;
     
     if (title) idea.title = title;
     if (description) idea.description = description;
     if (status) idea.status = status;
     if (category) idea.category = category;
     if (tags) idea.tags = tags;
+    if (typeof progress === 'number') idea.progress = progress;
 
     await idea.save();
     

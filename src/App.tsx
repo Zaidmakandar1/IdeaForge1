@@ -18,6 +18,7 @@ import CreateCommunity from './pages/CreateCommunity';
 import { DiscoverCommunities } from './pages/Communities';
 import CommunityDetail from "./pages/CommunityDetail";
 import TeamDetail from "./pages/TeamDetail";
+import Progress from "./pages/Progress";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/communities/discover" element={<DiscoverCommunities />} />
             <Route path="/communities/:id" element={<CommunityDetail />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/progress" element={<Progress />} />
             <Route path="/teams/:id" element={<TeamDetail />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Navigation from '@/components/layout/Navigation';
@@ -13,6 +13,8 @@ import { Textarea } from '@/components/ui/textarea';
 import IdeaCard from '@/components/ideas/IdeaCard';
 import { Edit, MapPin, Calendar, Globe, Github, Twitter, Linkedin, Users, Lightbulb, MessageSquare, Star } from 'lucide-react';
 import { getProfile, updateProfile, getUserStats, getIdeas, getTeams, getMyCommunities, getIdeaComments, uploadAvatar } from '@/services/api';
+import { ChartContainer } from '@/components/ui/chart';
+import { ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const Profile = () => {
   const { user, logout } = useAuth();
@@ -34,6 +36,16 @@ const Profile = () => {
   const [twitter, setTwitter] = useState('');
   const [linkedin, setLinkedin] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [showDashboard, setShowDashboard] = useState(false);
+  const progressRef = useRef<HTMLDivElement>(null);
+
+  // Helper to show dashboard and scroll
+  const revealProgress = useCallback(() => {
+    setShowDashboard(true);
+    setTimeout(() => {
+      progressRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 300);
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -69,7 +81,23 @@ const Profile = () => {
       })
       .catch(() => setError('Failed to load profile'))
       .finally(() => setLoading(false));
-  }, [user, navigate]);
+
+    // Show and scroll to progress section if #progress is in the URL
+    if (window.location.hash === '#progress') {
+      revealProgress();
+    }
+  }, [user, navigate, revealProgress]);
+
+  // Listen for hash changes (if user navigates to #progress after initial load)
+  useEffect(() => {
+    const onHashChange = () => {
+      if (window.location.hash === '#progress') {
+        revealProgress();
+      }
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, [revealProgress]);
 
   const handleSaveProfile = async () => {
     setIsEditing(false);
@@ -107,6 +135,20 @@ const Profile = () => {
       }
     }
   };
+
+  // Dashboard stats
+  const totalIdeas = myIdeas.length;
+  const completedIdeas = myIdeas.filter(i => i.progress === 100).length;
+  const inProgressIdeas = myIdeas.filter(i => i.progress > 0 && i.progress < 100).length;
+  const avgProgress = totalIdeas > 0 ? Math.round(myIdeas.reduce((sum, i) => sum + (i.progress || 0), 0) / totalIdeas) : 0;
+
+  // Data for bubble chart
+  const progressData = myIdeas.map((idea, idx) => ({
+    x: idx + 1,
+    y: idea.progress || 0,
+    z: 50,
+    name: idea.title,
+  }));
 
   if (!user || loading) return <div className="p-8 text-center">Loading...</div>;
   if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
